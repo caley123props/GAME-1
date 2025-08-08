@@ -16,7 +16,7 @@ function initGame() {
   loadSprite("goal_trophy", "a/kenney_platformer-kit/kenney_new-platformer-pack-1.0/Sprites/Tiles/Default/block_coin_active.png");
   loadSprite("enemy_bee", "a/kenney_platformer-kit/kenney_new-platformer-pack-1.0/Sprites/Enemies/Default/bee_a.png");
 
-  // FIX: define once, outside the scene
+  // define once, outside the scene
   const levelDef = levels[currentLevel - 1];
 
   scene("game", () => {
@@ -30,8 +30,8 @@ function initGame() {
       sprite("player_idle"),
       pos(100, 300),
       area(),
-      body({ jumpForce: 360 }),   // use body’s jumpForce
-      { speed: 200 }              // keep your speed; remove canJump/jumpForce fields
+      body({ jumpForce: 360 }),
+      { speed: 200 },
     ]);
 
     // Platforms
@@ -67,9 +67,8 @@ function initGame() {
     onKeyDown(["a", "left"], () => player.move(-player.speed, 0));
     onKeyDown(["d", "right"], () => player.move(player.speed, 0));
     onKeyPress(["w","up","space"], () => {
-      if (player.isGrounded()) player.jump();  // no custom jumpForce needed
+      if (player.isGrounded()) player.jump();
     });
-    player.onCollide("platform", () => { });
 
     // Camera
     player.onUpdate(() => camPos(player.pos));
@@ -86,9 +85,13 @@ function initGame() {
 
     // Win
     player.onCollide("goal", () => {
-      if (currentLevel === unlockedLevels) unlockedLevels = Math.min(unlockedLevels + 1, levels.length);
+      if (currentLevel === unlockedLevels) {
+        unlockedLevels = Math.min(unlockedLevels + 1, levels.length);
+      }
       alert(`LEVEL ${currentLevel} COMPLETED!`);
-      go("menu");
+      if (typeof showLevels === "function") {
+        showLevels();
+      }
     });
   });
 
