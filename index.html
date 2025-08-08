@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Arcade Platformer v1.5.3</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+            font-family: 'Press Start 2P', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        #game-canvas {
+            border: 4px solid #ff6600;
+            background: #000;
+            width: 800px;
+            height: 600px;
+            margin: 0 auto;
+            position: relative;
+            overflow: hidden;
+        }
+        #status {
+            margin-top: 10px;
+            padding: 10px;
+            background: #333;
+            border-radius: 5px;
+            text-align: center;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 10px;
+        }
+        .menu {
+            text-align: center;
+            padding: 20px;
+            font-family: 'Press Start 2P', monospace;
+        }
+        .menu button {
+            background: #ff6600;
+            color: white;
+            border: 3px solid #ff8800;
+            padding: 15px 30px;
+            margin: 10px;
+            font-size: 14px;
+            font-family: 'Press Start 2P', monospace;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .menu button:hover {
+            background: #ff8800;
+            transform: scale(1.05);
+        }
+        .level-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin: 20px;
+        }
+        .level-button {
+            background: #0066cc;
+            color: white;
+            border: 2px solid #0088ff;
+            padding: 20px;
+            font-size: 10px;
+            font-family: 'Press Start 2P', monospace;
+            cursor: pointer;
+        }
+        .level-button:hover {
+            background: #0088ff;
+        }
+        .level-button.locked {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .refresh-button {
+            background: #ff4444;
+            color: white;
+            border: 2px solid #ff6666;
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 12px;
+            font-family: 'Press Start 2P', monospace;
+            cursor: pointer;
+        }
+        .refresh-button:hover {
+            background: #ff6666;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Start Menu -->
+        <div id="start-menu" class="menu">
+            <h1>🎮 RETRO PLATFORMER v1.5.3</h1>
+            <p>8-BIT ARCADE ADVENTURE</p>
+            <button onclick="showLevels()">START GAME</button>
+            <button onclick="showInstructions()">HOW TO PLAY</button>
+            <button onclick="forceRefreshWithRandom()" class="refresh-button">🔄 FORCE REFRESH</button>
+        </div>
+
+        <!-- Levels Menu -->
+        <div id="levels-menu" class="menu" style="display: none;">
+            <h2>SELECT LEVEL</h2>
+            <div class="level-grid" id="level-grid"></div>
+            <button onclick="showStartMenu()">BACK TO MENU</button>
+            <button onclick="forceRefreshWithRandom()" class="refresh-button">🔄 FORCE REFRESH</button>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" style="display: none;">
+            <canvas id="game-canvas" width="800" height="600"></canvas>
+            <div id="status">LOADING...</div>
+            <button onclick="showStartMenu()" style="margin-top: 10px;">BACK TO MENU</button>
+            <button onclick="forceRefreshWithRandom()" class="refresh-button">🔄 FORCE REFRESH</button>
+        </div>
+
+        <!-- Instructions -->
+        <div id="instructions" class="menu" style="display: none;">
+            <h2>HOW TO PLAY</h2>
+            <p><strong>CONTROLS:</strong></p>
+            <p>A/D or ←/→ - MOVE</p>
+            <p>W or ↑ or SPACE - JUMP</p>
+            <p><strong>OBJECTIVE:</strong> REACH THE GOLDEN TROPHY!</p>
+            <button onclick="showStartMenu()">BACK TO MENU</button>
+            <button onclick="forceRefreshWithRandom()" class="refresh-button">🔄 FORCE REFRESH</button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/kaboom@3000.0.1/dist/kaboom.js"></script>
+    <script>
+        let currentLevel = 1;
+        let unlockedLevels = 1;
+        let gameState = 'menu';
+
+        // Force refresh functions with random parameters
+        function forceRefreshWithRandom() {
+            // Method 1: Add random timestamp to URL
+            const randomParam = Math.random().toString(36).substring(7);
+            const timestamp = Date.now();
+            window.location.href = window.location.href.split('?')[0] + '?v=' + timestamp + '&r=' + randomParam;
+        }
+
+        function forceRefreshWithCacheBusting() {
+            // Method 2: Clear cache and add random parameter
+            if (window.caches) {
+                caches.keys().then(function(names) {
+                    for (let name of names) {
+                        caches.delete(name);
+                    }
+                });
+            }
+            const randomParam = Math.random().toString(36).substring(7);
+            window.location.href = window.location.href.split('?')[0] + '?v=' + Date.now() + '&r=' + randomParam;
+        }
+
+        function forceRefreshHard() {
+            // Method 3: Hard refresh with random parameter
+            const randomParam = Math.random().toString(36).substring(7);
+            window.location.reload(true);
+            // Fallback: redirect with random parameter
+            setTimeout(() => {
+                window.location.href = window.location.href.split('?')[0] + '?v=' + Date.now() + '&r=' + randomParam;
+            }, 100);
+        }
+
+        // Auto-refresh with random parameter every 30 seconds (for testing)
+        // setInterval(() => {
+        //     const randomParam = Math.random().toString(36).substring(7);
+        //     window.location.href = window.location.href.split('?')[0] + '?v=' + Date.now() + '&r=' + randomParam;
+        // }, 30000);
+
+        // Keyboard shortcuts for force refresh
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey && e.key === 'r') || e.key === 'F5') {
+                e.preventDefault();
+                forceRefreshWithRandom();
+            }
+            // Additional shortcut: Ctrl+Shift+R
+            if (e.ctrlKey && e.shiftKey && e.key === 'R') {
+                e.preventDefault();
+                forceRefreshWithCacheBusting();
+            }
+        });
+
+        // Check if page was loaded with random parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasRandomParam = urlParams.has('v') || urlParams.has('r');
+        
+        if (hasRandomParam) {
+            console.log('Page loaded with random parameter:', urlParams.toString());
+        }
+
+        // Level definitions
+        const levels = [
+            {
+                name: "TUTORIAL ISLAND",
+                platforms: [
+                    {x: 200, y: 450, width: 100, height: 32},
+                    {x: 400, y: 350, width: 100, height: 32},
+                    {x: 600, y: 250, width: 100, height: 32}
+                ],
+                obstacles: [],
+                goal: {x: 700, y: 200, width: 32, height: 32}
+            },
+            {
+                name: "CLOUD KINGDOM",
+                platforms: [
+                    {x: 150, y: 400, width: 80, height: 32},
+                    {x: 300, y: 300, width: 80, height: 32},
+                    {x: 450, y: 200, width: 80, height: 32},
+                    {x: 600, y: 350, width: 80, height: 32}
+                ],
+                obstacles: [
+                    {x: 400, y: 500, width: 32, height: 32, speedX: 2, type: 'mover'}
+                ],
+                goal: {x: 700, y: 150, width: 32, height: 32}
+            },
+            {
+                name: "THUNDER PEAK",
+                platforms: [
+                    {x: 100, y: 450, width: 64, height: 32},
+                    {x: 250, y: 350, width: 64, height: 32},
+                    {x: 400, y: 250, width: 64, height: 32},
+                    {x: 550, y: 350, width: 64, height: 32},
+                    {x: 700, y: 200, width: 64, height: 32}
+                ],
+                obstacles: [
+                    {x: 300, y: 500, width: 32, height: 32, speedX: 3, type: 'mover'},
+                    {x: 500, y: 500, width: 32, height: 32, speedX: -2, type: 'mover'}
+                ],
+                goal: {x: 750, y: 100, width: 32, height: 32}
+            },
+            {
+                name: "VOLCANO VALLEY",
+                platforms: [
+                    {x: 120, y: 400, width: 80, height: 32},
+                    {x: 280, y: 300, width: 80, height: 32},
+                    {x: 440, y: 200, width: 80, height: 32},
+                    {x: 600, y: 300, width: 80, height: 32},
+                    {x: 760, y: 150, width: 80, height: 32}
+                ],
+                obstacles: [
+                    {x: 200, y: 500, width: 32, height: 32, speedX: 2, type: 'mover'},
+                    {x: 400, y: 500, width: 32, height: 32, speedX: -2, type: 'mover'},
+                    {x: 600, y: 500, width: 32, height: 32, speedX: 1.5, type: 'mover'}
+                ],
+                goal: {x: 800, y: 50, width: 32, height: 32}
+            },
+            {
+                name: "SKY FORTRESS",
+                platforms: [
+                    {x: 100, y: 450, width: 64, height: 32},
+                    {x: 250, y: 350, width: 64, height: 32},
+                    {x: 400, y: 250, width: 64, height: 32},
+                    {x: 550, y: 350, width: 64, height: 32},
+                    {x: 700, y: 200, width: 64, height: 32},
+                    {x: 850, y: 100, width: 64, height: 32}
+                ],
+                obstacles: [
+                    {x: 150, y: 500, width: 32, height: 32, speedX: 2.5, type: 'mover'},
+                    {x: 350, y: 500, width: 32, height: 32, speedX: -2, type: 'mover'},
+                    {x: 550, y: 500, width: 32, height: 32, speedX: 1.8, type: 'mover'},
+                    {x: 750, y: 500, width: 32, height: 32, speedX: -1.5, type: 'mover'}
+                ],
+                goal: {x: 900, y: 50, width: 32, height: 32}
+            }
+        ];
+
+        // Menu functions
+        function showStartMenu() {
+            document.getElementById('start-menu').style.display = 'block';
+            document.getElementById('levels-menu').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'none';
+            document.getElementById('instructions').style.display = 'none';
+            gameState = 'menu';
+        }
+
+        function showLevels() {
+            document.getElementById('start-menu').style.display = 'none';
+            document.getElementById('levels-menu').style.display = 'block';
+            document.getElementById('game-screen').style.display = 'none';
+            document.getElementById('instructions').style.display = 'none';
+            
+            const levelGrid = document.getElementById('level-grid');
+            levelGrid.innerHTML = '';
+            
+            for (let i = 1; i <= levels.length; i++) {
+                const button = document.createElement('button');
+                button.className = 'level-button';
+                if (i <= unlockedLevels) {
+                    button.textContent = `LEVEL ${i}\n${levels[i-1].name}`;
+                    button.onclick = () => startLevel(i);
+                } else {
+                    button.textContent = `LEVEL ${i}\n🔒 LOCKED`;
+                    button.classList.add('locked');
+                }
+                levelGrid.appendChild(button);
+            }
+            gameState = 'levels';
+        }
+
+        function showInstructions() {
+            document.getElementById('start-menu').style.display = 'none';
+            document.getElementById('levels-menu').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'none';
+            document.getElementById('instructions').style.display = 'block';
+            gameState = 'instructions';
+        }
+
+        function startLevel(levelNum) {
+            currentLevel = levelNum;
+            document.getElementById('start-menu').style.display = 'none';
+            document.getElementById('levels-menu').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'block';
+            document.getElementById('instructions').style.display = 'none';
+            
+            initGame();
+            gameState = 'game';
+        }
+
+        function initGame() {
+            const k = kaboom({
+                width: 800,
+                height: 600,
+                background: [0, 0, 0],
+                canvas: document.getElementById('game-canvas'),
+                global: true,
+                crisp: true,
+                pixelDensity: 1
+            });
+
+            loadSprite("bg", "a/kenney_platformer-kit/kenney_new-platformer-pack-1.0/Sprites/Backgrounds/Default/background_color_trees.png");
+            loadSprite("tile_block", "a/kenney_platformer-kit/kenney_new-platformer-pack-1.0/Sprites/Tiles/Default/terrain_stone_block.png");
+
+            loadSprite("player_idle", "a/kenney_platformer-kit/kenney_new-platformer-pack-1.0/Sprites/Characters/Default/character_green_idle.png");
+
+            loadSprite("goal_trophy", "a/kenney_platformer-kit/kenney_new-platformer-pack-1.0/Sprites/Tiles/Default/block_coin_active.png");
+
+            // optional enemy for obstacles
+            loadSprite("enemy_bee", "a/kenney_platformer-kit/kenney_new-platformer-pack-1.0/Sprites/Enemies/Default/bee_a.png");
+
+            // pick current level once for this run
+            const levelDef = levels[currentLevel - 1];
+
+            // Game scene
+            scene("game", () => {
+                // Game variables
+                let playerX = 100;
+                let playerY = 300;
+                let playerVelocityY = 0;
+                let isOnGround = false;
+                let isOnPlatform = false;
+                let cameraX = 0;
+                
+                const gravity = 0.5;
+                const jumpForce = -12;
+                const moveSpeed = 5;
+                
+                const platforms = [...levelDef.platforms];
+                const obstacles = [...levelDef.obstacles];
+                const goal = { ...levelDef.goal };
+                
+                // Update obstacles
+                for (let obstacle of obstacles) {
+                    obstacle.x = obstacle.x || 0;
+                    obstacle.y = obstacle.y || 500;
+                    obstacle.speedX = obstacle.speedX || 2;
+                    obstacle.direction = obstacle.direction || 1;
+                }
+                
+                // Add background
+                add([
+                    sprite("bg"),
+                    pos(0, 0),
+                    z(-10)
+                ]);
+                
+                // Add player
+                const player = add([
+                    sprite("player_idle"),
+                    pos(playerX, playerY),
+                    area(),
+                    body(),
+                    {
+                        speed: moveSpeed,
+                        jumpForce: jumpForce,
+                        canJump: true
+                    }
+                ]);
+                
+                // Add platforms (tile Kenney blocks across width)
+                const TILE = 32; // display size for a tile
+                const BASE = 16; // Kenney base tile size
+                const TILE_SCALE = TILE / BASE;
+
+                platforms.forEach(p => {
+                    for (let x = 0; x < p.width; x += TILE) {
+                        add([
+                            sprite("tile_block"),
+                            pos(p.x + x, p.y),
+                            scale(TILE_SCALE),
+                            area(),
+                            body({ isStatic: true }),
+                            "platform",
+                        ]);
+                    }
+                });
+                
+                // Add obstacles (use bee sprite if any)
+                obstacles.forEach(o => {
+                    add([
+                        sprite("enemy_bee"),
+                        pos(o.x, o.y),
+                        area(),
+                        body(),
+                        { speedX: o.speedX ?? 2, direction: o.direction ?? 1 },
+                        "obstacle",
+                    ]);
+                });
+                
+                // Add goal
+                add([
+                    sprite("goal_trophy"),
+                    pos(goal.x, goal.y),
+                    area(),
+                    "goal",
+                ]);
+                
+                // Player movement
+                onKeyDown(["a", "left"], () => {
+                    player.move(-player.speed, 0);
+                });
+                
+                onKeyDown(["d", "right"], () => {
+                    player.move(player.speed, 0);
+                });
+                
+                // Jumping
+                onKeyPress(["w", "up", "space"], () => {
+                    if (player.canJump) {
+                        player.jump(player.jumpForce);
+                        player.canJump = false;
+                    }
+                });
+                
+                // Reset jump when touching ground or platform
+                player.onCollide("platform", () => {
+                    player.canJump = true;
+                });
+                
+                // Keep player in bounds
+                player.onUpdate(() => {
+                    if (player.pos.x < 0) player.pos.x = 0;
+                    if (player.pos.x > 768) player.pos.x = 768;
+                });
+                
+                // Update obstacles
+                onUpdate("obstacle", (obstacle) => {
+                    obstacle.move(obstacle.speedX, 0);
+                    
+                    // Bounce off boundaries
+                    if (obstacle.pos.x <= 0 || obstacle.pos.x >= 768) {
+                        obstacle.speedX *= -1;
+                    }
+                    
+                    // Check collision with player
+                    if (obstacle.isColliding(player)) {
+                        player.pos.x = 100;
+                        player.pos.y = 300;
+                        player.velocity.y = 0;
+                    }
+                });
+                
+                // Check goal collision
+                player.onCollide("goal", () => {
+                    // Level completed!
+                    if (currentLevel === unlockedLevels) {
+                        unlockedLevels = Math.min(unlockedLevels + 1, levels.length);
+                    }
+                    alert(`LEVEL ${currentLevel} COMPLETED!`);
+                    go("menu");
+                });
+                
+                // Camera follow (center on player)
+                player.onUpdate(() => {
+                    camPos(player.pos);
+                });
+                
+                // UI
+                add([
+                    text(`LEVEL ${currentLevel}: ${levelDef.name}`, { font: "16px 'Press Start 2P'" }),
+                    pos(10, 10),
+                    { z: 100 }
+                ]);
+                
+                add([
+                    text(`POS: ${Math.floor(player.pos.x)}, ${Math.floor(player.pos.y)}`, { font: "12px 'Press Start 2P'" }),
+                    pos(10, 40),
+                    { z: 100 }
+                ]);
+            });
+            
+            // Menu scene
+            scene("menu", () => {
+                add([
+                    text("RETRO PLATFORMER", { font: "24px 'Press Start 2P'" }),
+                    pos(400, 200),
+                    origin("center")
+                ]);
+                
+                add([
+                    text("Press SPACE to continue", { font: "16px 'Press Start 2P'" }),
+                    pos(400, 300),
+                    origin("center")
+                ]);
+                
+                onKeyPress("space", () => {
+                    showLevels();
+                });
+            });
+            
+            // Start the game
+            go("game");
+            
+            document.getElementById('status').textContent =
+  `LEVEL ${currentLevel}: ${levelDef.name} - REACH THE GOLDEN TROPHY!`;
+        }
+
+        // Initialize the app
+        showStartMenu();
+    </script>
+</body>
+</html>
