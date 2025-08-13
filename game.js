@@ -36,7 +36,7 @@ function initGame() {
       sprite("player_idle"),
       pos(100, 300),
       area(),
-      body({ jumpForce: 560 }),
+      body({ jumpForce: 1000 }),
       { speed: 200 },
     ]);
 
