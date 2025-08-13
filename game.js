@@ -29,14 +29,14 @@ function initGame() {
     const TILE = 32, BASE = 16, TILE_SCALE = TILE / BASE;
 
     // Background fill
-    add([sprite("bg"), pos(0, 0), anchor("topleft"), scale(3), z(-10)]);
+    add([sprite("bg"), pos(0, 0), anchor("topleft"), fixed(), scale(2.5), z(-10)]);
 
     // Player
     const player = add([
       sprite("player_idle"),
       pos(100, 300),
       area(),
-      body({ jumpForce: 360 }),
+      body({ jumpForce: 560 }),
       { speed: 200 },
     ]);
 
